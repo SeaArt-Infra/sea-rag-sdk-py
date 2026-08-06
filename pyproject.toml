@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sea-rag-sdk"
+version = "0.1.0"
+description = "Python SDK for SeaArt RAG and RAGFlow APIs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "SeaArt" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent"
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/SeaArt-Infra/sea-rag-sdk-py"
+Repository = "https://github.com/SeaArt-Infra/sea-rag-sdk-py"
+
+[tool.setuptools.packages.find]
+include = ["sea_rag_sdk*"]

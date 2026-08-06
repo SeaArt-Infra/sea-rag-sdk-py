@@ -1,0 +1,4 @@
+interface:
+  display_name: "SeaRAG Python SDK"
+  short_description: "Integrate Python services with SeaArt RAG APIs."
+  default_prompt: "Use $sea-rag-sdk-py to integrate a Python service with SeaArt RAG APIs."

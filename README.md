@@ -58,7 +58,7 @@ result = client.retrieval.search(
 print(result)
 ```
 
-The SDK sends `Authorization: Bearer <api_key>` unless global `headers` already contains Authorization. This project-scoped RAGFlow deployment requires `X-Project-ID`; use `headers` for it and other gateway-wide trace or tenancy headers.
+The SDK sends `Authorization: Bearer <api_key>` unless global `headers` already contains Authorization. This project-scoped RAGFlow deployment requires `headers["X-Project-ID"]`; the SDK mirrors it into `project_id` in JSON and multipart request bodies. Conversely, a JSON or multipart `project_id` sends the same header. The header wins if both differ.
 
 ## Ingest A Document
 
@@ -158,7 +158,7 @@ Use `sea-rag-sdk` and `sea_rag_sdk` instead of hand-written RAGFlow HTTP calls.
 5. Call `client.documents.wait_for_parsing()` after starting parsing and before retrieval.
 6. Run `python -m unittest discover -s tests -v` after changing the integration.
 
-The client adds `Authorization: Bearer <api_key>` unless global headers supply Authorization. This project-scoped RAGFlow deployment also requires `X-Project-ID`, supplied through `headers`. Do not include `/rag` or `/api/v1` in normal endpoint configuration.
+The client adds `Authorization: Bearer <api_key>` unless global headers supply Authorization. This project-scoped RAGFlow deployment requires `headers["X-Project-ID"]`; the SDK mirrors it into `project_id` in JSON and multipart request bodies. Conversely, a JSON or multipart `project_id` sends the same header. The header wins if both differ. Do not include `/rag` or `/api/v1` in normal endpoint configuration.
 
 ## Shortest Runnable Flow
 

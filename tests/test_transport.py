@@ -41,7 +41,13 @@ class TransportTests(unittest.TestCase):
 
     def test_upload_uses_gateway_route_multipart_and_bearer_auth(self) -> None:
         response = _Response(b'{"code": 0, "data": [{"id": "doc_1", "run": "1"}]}')
-        client = rag.Client(rag.ClientOptions(endpoint="https://gateway.example", api_key="api-key"))
+        client = rag.Client(
+            rag.ClientOptions(
+                endpoint="https://gateway.example",
+                api_key="api-key",
+                headers={"X-Project-ID": "project_1"},
+            )
+        )
         with patch("sea_rag_sdk.transport.request.urlopen", return_value=response) as urlopen:
             result = client.documents.upload("kb_1", [rag.UploadFile("notes.txt", b"rag content")])
 
@@ -52,9 +58,43 @@ class TransportTests(unittest.TestCase):
         req = urlopen.call_args.args[0]
         self.assertEqual(req.full_url, "https://gateway.example/rag/api/v1/datasets/kb_1/documents")
         self.assertEqual(req.get_header("Authorization"), "Bearer api-key")
+        self.assertEqual(req.get_header("X-project-id"), "project_1")
         self.assertIn("multipart/form-data", req.get_header("Content-type"))
+        self.assertIn(b'name="project_id"', req.data)
+        self.assertIn(b"project_1", req.data)
         self.assertIn(b'filename="notes.txt"', req.data)
         self.assertIn(b"rag content", req.data)
+
+    def test_project_id_is_added_to_json_header_and_body_without_mutating_payload(self) -> None:
+        client = rag.Client(
+            rag.ClientOptions(
+                endpoint="https://gateway.example",
+                headers={"X-Project-ID": "project_1"},
+            )
+        )
+        payload = {"question": "hello"}
+        with patch(
+            "sea_rag_sdk.transport.request.urlopen",
+            return_value=_Response(b'{"code": 0, "data": {"chunks": []}}'),
+        ) as urlopen:
+            client.retrieval.search(payload)
+
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.get_header("X-project-id"), "project_1")
+        self.assertEqual(json.loads(req.data)["project_id"], "project_1")
+        self.assertNotIn("project_id", payload)
+
+    def test_project_id_in_json_body_adds_header(self) -> None:
+        client = rag.Client(rag.ClientOptions(endpoint="https://gateway.example"))
+        with patch(
+            "sea_rag_sdk.transport.request.urlopen",
+            return_value=_Response(b'{"code": 0, "data": {"chunks": []}}'),
+        ) as urlopen:
+            client.retrieval.search({"question": "hello", "project_id": "project_1"})
+
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.get_header("X-project-id"), "project_1")
+        self.assertEqual(json.loads(req.data)["project_id"], "project_1")
 
     def test_nonzero_rag_code_raises_api_error(self) -> None:
         client = rag.Client(rag.ClientOptions(endpoint="https://gateway.example"))

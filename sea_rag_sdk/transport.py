@@ -13,6 +13,7 @@ from .errors import APIError, RAGError
 from .types import UploadFile
 
 QueryParams = Mapping[str, Any]
+PROJECT_ID_HEADER = "X-Project-ID"
 
 
 class Transport:
@@ -29,7 +30,7 @@ class Transport:
             raise ValueError("timeout must be non-negative")
         self.endpoint = normalize_rag_endpoint(endpoint)
         self.api_key = api_key
-        self.headers = dict(headers or {})
+        self.headers = with_project_id_header(headers, project_id_from_headers(headers))
         self.timeout = timeout
 
     def get_json(self, path: str, query: QueryParams | None = None) -> Any:
@@ -72,14 +73,23 @@ class Transport:
         files: Sequence[UploadFile],
         fields: Mapping[str, str] | None = None,
     ) -> Any:
-        body, content_type = _encode_multipart(files, fields or {})
+        request_fields = dict(fields or {})
+        project_id = project_id_from_headers(self.headers) or _project_id_from_value(
+            request_fields.get("project_id")
+        )
+        if project_id:
+            request_fields["project_id"] = project_id
+        body, content_type = _encode_multipart(files, request_fields)
+        request_headers = {"Content-Type": content_type}
+        if project_id:
+            request_headers[PROJECT_ID_HEADER] = project_id
         raw = self._request_text(
             "POST",
             path,
             None,
             body,
             "application/json",
-            {"Content-Type": content_type},
+            request_headers,
         )
         if raw == "":
             return None
@@ -191,20 +201,25 @@ class Transport:
         accept: str,
         headers: Mapping[str, str] | None,
     ) -> request.Request:
+        request_headers = self.build_headers(accept, body is not None, headers)
+        request_body = body
+        if body is not None and not isinstance(body, (bytes, bytearray)):
+            request_body, request_headers = _project_json_context(body, request_headers)
+
         payload: bytes | None
-        if body is None:
+        if request_body is None:
             payload = None
-        elif isinstance(body, bytes):
-            payload = body
+        elif isinstance(request_body, (bytes, bytearray)):
+            payload = bytes(request_body)
         else:
-            payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+            payload = json.dumps(request_body, ensure_ascii=False).encode("utf-8")
         url = self.build_url(path, query)
         if _is_debug_enabled():
             print(method, url, file=os.sys.stderr)
         return request.Request(
             url,
             data=payload,
-            headers=self.build_headers(accept, payload is not None, headers),
+            headers=request_headers,
             method=method,
         )
 
@@ -298,6 +313,48 @@ def _is_zero_value(value: Any) -> bool:
 
 def _has_header(headers: Mapping[str, str], name: str) -> bool:
     return any(key.lower() == name.lower() for key in headers)
+
+
+def _project_json_context(
+    body: Any,
+    headers: Mapping[str, str],
+) -> tuple[Any, dict[str, str]]:
+    if not isinstance(body, Mapping):
+        return body, dict(headers)
+
+    project_id = project_id_from_headers(headers) or _project_id_from_value(body.get("project_id"))
+    if not project_id:
+        return body, dict(headers)
+    result = dict(body)
+    result["project_id"] = project_id
+    return result, with_project_id_header(headers, project_id)
+
+
+def project_id_from_headers(headers: Mapping[str, str] | None) -> str:
+    for key, value in (headers or {}).items():
+        if key.lower() == PROJECT_ID_HEADER.lower():
+            return _project_id_from_value(value)
+    return ""
+
+
+def with_project_id_header(
+    headers: Mapping[str, str] | None,
+    project_id: str | None,
+) -> dict[str, str]:
+    value = _project_id_from_value(project_id)
+    if not value:
+        return dict(headers or {})
+    result = {
+        key: header_value
+        for key, header_value in (headers or {}).items()
+        if key.lower() != PROJECT_ID_HEADER.lower()
+    }
+    result[PROJECT_ID_HEADER] = value
+    return result
+
+
+def _project_id_from_value(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
 
 
 def _is_debug_enabled() -> bool:

@@ -41,6 +41,20 @@ class UploadFile:
 
 
 @dataclass(frozen=True)
+class UploadedFile:
+    """An attachment created from a URL without creating a dataset document."""
+
+    id: str = ""
+    name: str = ""
+    size: int = 0
+    extension: str = ""
+    mime_type: str = ""
+    created_by: str = ""
+    created_at: float = 0.0
+    preview_url: str = ""
+
+
+@dataclass(frozen=True)
 class Dataset:
     id: str = ""
     name: str = ""
@@ -251,6 +265,20 @@ def document_from_dict(value: Mapping[str, Any] | None) -> Document:
         status=_text(raw.get("status")),
         chunk_count=_integer(raw.get("chunk_count")),
         token_count=_integer(raw.get("token_count")),
+    )
+
+
+def uploaded_file_from_dict(value: Mapping[str, Any] | None) -> UploadedFile:
+    raw = value or {}
+    return UploadedFile(
+        id=_text(raw.get("id")),
+        name=_text(raw.get("name")),
+        size=_integer(raw.get("size")),
+        extension=_text(raw.get("extension")),
+        mime_type=_text(raw.get("mime_type")),
+        created_by=_text(raw.get("created_by")),
+        created_at=_number(raw.get("created_at")),
+        preview_url=_text(raw.get("preview_url")),
     )
 
 

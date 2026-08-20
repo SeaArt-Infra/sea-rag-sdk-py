@@ -7,7 +7,7 @@ Python SDK for SeaArt RAG. It provides RAGFlow API helpers for datasets, documen
 | Client resource | Function |
 | --- | --- |
 | `client.datasets` | Create, list, get, update, and delete datasets |
-| `client.documents` | Upload, list, update, parse, stop, delete, and download documents |
+| `client.documents` | Upload files or URLs; list, update, parse, stop, delete, and download documents |
 | `client.chunks` | Start or cancel parsing and manage chunks |
 | `client.retrieval` | Retrieve grounded chunks from datasets |
 | `client.chat` | Manage chat assistants and run JSON or streaming completions |
@@ -83,6 +83,22 @@ client.documents.wait_for_parsing(dataset_id, document_id)
 Use `client.documents.parse()` and `client.documents.stop()` for newer document parse endpoints. Use `client.chunks.start_parsing()` and `client.chunks.cancel_parsing()` for RAGFlow-compatible chunk parse routes.
 
 Parsing is asynchronous. Call `client.documents.wait_for_parsing()` before retrieval; it polls every second by default and waits for up to 15 minutes. It returns a typed `Document` on `DONE`, raises `sea_rag_sdk.ParsingFailedError` on `CANCEL` or `FAIL`, and raises `sea_rag_sdk.ParsingTimeoutError` on timeout. `WaitForParsingOptions.on_progress` receives every observed document state.
+
+## Ingest From URL
+
+Use `documents.upload_from_url()` to crawl one HTTP(S) web page into a dataset. It creates a PDF-backed document with an unstarted parse job, so parse it and wait for completion before retrieval.
+
+```python
+uploaded = client.documents.upload_from_url(
+    dataset_id,
+    "example-page",
+    "https://example.com/page",
+)
+client.documents.parse(dataset_id, [uploaded.data.id])
+client.documents.wait_for_parsing(dataset_id, uploaded.data.id)
+```
+
+`client.documents.upload_info_from_url(source_url)` calls `/api/v1/documents/upload?url=...` and returns an `UploadedFile` attachment only. It does not create a dataset document or trigger parsing. RAGFlow does not automatically persist the source URL for retrieval; set document metadata such as `{"url": "https://example.com/page"}` when the source URL must be returned with references.
 
 ## Retrieve And Curate Chunks
 
@@ -211,6 +227,12 @@ print(f"retrieved {len(result.data.chunks)} chunks")
 ```
 
 `wait_for_parsing()` polls every second by default for up to 15 minutes. It returns a typed `Document` on `DONE`, invokes `on_progress` for every observed document state, raises `rag.ParsingFailedError` for `CANCEL` or `FAIL`, and raises `rag.ParsingTimeoutError` on timeout. RAGFlow state is normalized to `UNSTART`, `RUNNING`, `CANCEL`, `DONE`, or `FAIL`.
+
+## URL Ingestion
+
+Use `client.documents.upload_from_url(dataset_id, name, source_url)` to crawl an HTTP(S) web page into a dataset. It returns an unstarted `Document`; call `client.documents.parse()` or `client.chunks.start_parsing()`, then `wait_for_parsing()` before retrieval.
+
+Use `client.documents.upload_info_from_url(source_url)` only when an attachment is needed. It does not create a dataset document or index content. RAGFlow does not automatically return the original source URL during retrieval; store it as document metadata when references need it.
 
 ## Other Resources
 

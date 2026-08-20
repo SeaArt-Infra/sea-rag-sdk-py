@@ -17,6 +17,7 @@ from .types import (
     RAGResponse,
     RetrievalResult,
     UploadFile,
+    UploadedFile,
     WaitForParsingOptions,
     normalize_parsing_status,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "SeaRAGClient",
     "Transport",
     "UploadFile",
+    "UploadedFile",
     "WaitForParsingOptions",
     "normalize_parsing_status",
     "normalize_rag_endpoint",

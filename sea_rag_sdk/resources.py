@@ -23,6 +23,7 @@ from .types import (
     RAGResponse,
     RetrievalResult,
     UploadFile,
+    UploadedFile,
     WaitForParsingOptions,
     chat_from_dict,
     chat_list_from_dict,
@@ -32,6 +33,7 @@ from .types import (
     document_from_dict,
     document_list_from_dict,
     retrieval_result_from_dict,
+    uploaded_file_from_dict,
 )
 
 
@@ -99,6 +101,29 @@ class DocumentsResource(_Resource):
             f"{API_PREFIX}/datasets/{_path_segment(dataset_id)}/documents", files
         )
         return _rag_response(raw, lambda value: [document_from_dict(item) for item in _objects(value)])
+
+    def upload_from_url(self, dataset_id: str, name: str, source_url: str) -> RAGResponse[Document]:
+        """Crawl a web page into a dataset document.
+
+        Call :meth:`parse` or ``client.chunks.start_parsing`` and wait for the
+        document to finish before retrieval.
+        """
+        raw = self._transport.post_multipart(
+            f"{API_PREFIX}/datasets/{_path_segment(dataset_id)}/documents",
+            [],
+            {"name": name, "url": source_url},
+            query={"type": "web"},
+        )
+        return _rag_response(raw, document_from_dict)
+
+    def upload_info_from_url(self, source_url: str) -> RAGResponse[UploadedFile]:
+        """Crawl a URL into an attachment without creating a dataset document."""
+        return self._response(
+            "POST",
+            "/documents/upload",
+            uploaded_file_from_dict,
+            query={"url": source_url},
+        )
 
     def list(
         self,

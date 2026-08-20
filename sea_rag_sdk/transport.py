@@ -72,6 +72,8 @@ class Transport:
         path: str,
         files: Sequence[UploadFile],
         fields: Mapping[str, str] | None = None,
+        *,
+        query: QueryParams | None = None,
     ) -> Any:
         request_fields = dict(fields or {})
         project_id = project_id_from_headers(self.headers) or _project_id_from_value(
@@ -86,7 +88,7 @@ class Transport:
         raw = self._request_text(
             "POST",
             path,
-            None,
+            query,
             body,
             "application/json",
             request_headers,

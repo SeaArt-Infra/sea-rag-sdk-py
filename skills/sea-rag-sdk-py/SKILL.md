@@ -70,6 +70,12 @@ print(f"retrieved {len(result.data.chunks)} chunks")
 
 `wait_for_parsing()` polls every second by default for up to 15 minutes. It returns a typed `Document` on `DONE`, invokes `on_progress` for every observed document state, raises `rag.ParsingFailedError` for `CANCEL` or `FAIL`, and raises `rag.ParsingTimeoutError` on timeout. RAGFlow state is normalized to `UNSTART`, `RUNNING`, `CANCEL`, `DONE`, or `FAIL`.
 
+## URL Ingestion
+
+Use `client.documents.upload_from_url(dataset_id, name, source_url)` to crawl an HTTP(S) web page into a dataset. It returns an unstarted `Document`; call `client.documents.parse()` or `client.chunks.start_parsing()`, then `wait_for_parsing()` before retrieval.
+
+Use `client.documents.upload_info_from_url(source_url)` only when an attachment is needed. It does not create a dataset document or index content. RAGFlow does not automatically return the original source URL during retrieval; store it as document metadata when references need it.
+
 ## Other Resources
 
 Use `client.documents.parse()` and `stop()` for newer document parse endpoints. Use `client.chunks.cancel_parsing()` to cancel compatible parsing and its chunk CRUD helpers for curation. Use `client.chat.complete()` or `stream()` for configured chat assistants, and `client.raw.request(method, "/api/v1/...", query=..., body=...)` for an uncovered RAGFlow API.

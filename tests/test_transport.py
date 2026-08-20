@@ -65,6 +65,43 @@ class TransportTests(unittest.TestCase):
         self.assertIn(b'filename="notes.txt"', req.data)
         self.assertIn(b"rag content", req.data)
 
+    def test_upload_from_url_uses_web_import_endpoint(self) -> None:
+        client = rag.Client(rag.ClientOptions(endpoint="https://gateway.example"))
+        with patch(
+            "sea_rag_sdk.transport.request.urlopen",
+            return_value=_Response(b'{"code": 0, "data": {"id": "doc_1", "name": "example.pdf", "run": "0"}}'),
+        ) as urlopen:
+            result = client.documents.upload_from_url(
+                "kb_1", "example-page", "https://example.com/page"
+            )
+
+        self.assertTrue(result.success)
+        self.assertIsInstance(result.data, rag.Document)
+        self.assertEqual(result.data.id, "doc_1")
+        self.assertEqual(result.data.parsing_status, "UNSTART")
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.full_url, "https://gateway.example/rag/api/v1/datasets/kb_1/documents?type=web")
+        self.assertIn(b'name="name"', req.data)
+        self.assertIn(b"example-page", req.data)
+        self.assertIn(b'name="url"', req.data)
+        self.assertIn(b"https://example.com/page", req.data)
+        self.assertNotIn(b"filename=", req.data)
+
+    def test_upload_info_from_url_uses_attachment_endpoint(self) -> None:
+        client = rag.Client(rag.ClientOptions(endpoint="https://gateway.example"))
+        with patch(
+            "sea_rag_sdk.transport.request.urlopen",
+            return_value=_Response(b'{"code": 0, "data": {"id": "file_1", "name": "page.pdf", "mime_type": "application/pdf"}}'),
+        ) as urlopen:
+            result = client.documents.upload_info_from_url("https://example.com/page")
+
+        self.assertTrue(result.success)
+        self.assertIsInstance(result.data, rag.UploadedFile)
+        self.assertEqual(result.data.id, "file_1")
+        self.assertEqual(result.data.mime_type, "application/pdf")
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.full_url, "https://gateway.example/rag/api/v1/documents/upload?url=https%3A%2F%2Fexample.com%2Fpage")
+
     def test_project_id_is_added_to_json_header_and_body_without_mutating_payload(self) -> None:
         client = rag.Client(
             rag.ClientOptions(
